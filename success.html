@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <h1>Query Results:</h1>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No messages available.</p>
+        {% endif %}
+        {% endwith %}
+        
+        <ul>
+            <li><a href="/">Go Home</a></li>
+            <li><a href="{{ url_for('add_baker') }}">Add Another Baker</a></li>
+        </ul>
+    </body>
+</html>
