@@ -79,6 +79,52 @@ def add_baker():
 
     return render_template('add_baker.html')
 
+@app.route('/add_entry', methods=['GET', 'POST'])
+def add_entry():
+    if request.method == 'POST':
+        # Retrieve form data
+        entry = request.form.get('Entry', '').strip()
+        e_votes = request.form.get('e_votes', '').strip()
+        ok_votes = request.form.get('ok_votes', '').strip()
+        b_votes = request.form.get('b_votes', '').strip()
+        print("entry, e_votes, ok_votes, b_votes")
+        print(f"{entry}, {e_votes}, {ok_votes}, {b_votes}")
+
+
+        errors = False
+        if not entry:
+            flash("You cannot enter an empty entry.")
+            errors = True
+        
+        if int(e_votes) < 0:
+            flash("You cannot enter an excellent vote less than 0")
+            errors = True
+        
+        if int(ok_votes) < 0:
+            flash("You cannot enter an excellent vote less than 0")
+            errors = True
+        
+        if int(b_votes) < 0:
+            flash("You cannot enter an excellent vote less than 0")
+            errors = True
+        
+
+        if errors:
+            return redirect(url_for('success'))
+        
+        conn = sqlite3.connect('./baking_result.db')
+        curr = conn.cursor()
+        curr.execute('''
+            INSERT INTO Baking_Results (Entry_Id, User_Id, Name, ExcellentV, OkV, BadV)
+            VALUES (?, ?, ?, ?, ?,?)
+        ''', (1, 2, entry, int(e_votes), int(ok_votes), int(b_votes))) 
+        conn.commit()
+        conn.close()
+        flash("Record Successfully added")
+        return render_template('success.html')
+
+    return render_template('add_entry.html')
+
 @app.route('/success')
 def success():
     return render_template('success.html')

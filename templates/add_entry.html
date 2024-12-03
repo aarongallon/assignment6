@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <form action="{{url_for('add_entry')}}" method="post">
+
+        <h1>Baking Contest Entry Information</h1>
+
+        <div>
+        <label for="#">Name Of Baking item</label><br>
+            <input type="text" id="Entry" name="Entry">
+        </div>
+
+        <div>
+            <label for="#">Number of Excellent Votes</label><br>
+                <input type="text" id="e_votes" name="e_votes">
+        </div>
+
+        <div>
+            <label for="#">Number of Ok Votes</label><br>
+                <input type="text" id="ok_votes" name="ok_votes">
+        </div>
+
+        <div>
+            <label for="#">Number of Bad Votes</label><br>
+                <input type="text" id="b_votes" name="b_votes">
+        </div>
+
+        <br>
+            <button type="submit">Submit</button>
+            <li><a href="/">Go Home</a></li>
+
+        </form>
+        
+    </body>
+</html>
+
+
+
