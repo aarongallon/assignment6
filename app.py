@@ -22,12 +22,24 @@ def init_db():
     )
     ''')
     conn.commit()  # Commit changes
+    curr.execute('''INSERT INTO Baking_info(Name, Age, Phone_Number, Security_Level, Login_Password)
+                 VALUES(?,?,?,?,?)''', ('Admin', 21, 1234567890, 3, 12345)
+                 )
+    conn.commit()
     conn.close()
 
 
 @app.route('/')  #first page
 def home():
     return render_template('home.html')
+
+@app.route('/login')
+def login():
+    if request.method == 'POST':
+        # Retrieve form data
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+    return render_template('/login.html')
 
 @app.route('/add_baker', methods=['GET', 'POST'])
 def add_baker():
@@ -128,6 +140,20 @@ def add_entry():
 @app.route('/success')
 def success():
     return render_template('success.html')
+
+
+@app.route('/homepagelvl1')
+def homepagelvl1():
+    return render_template('homepagelvl1.html')
+
+@app.route('/homepagelvl2')
+def homepagelvl2():
+    return render_template('homepagelvl2.html')
+
+@app.route('/homepagelvl3')
+def homepagelvl3():
+    return render_template('homepagelvl3.html')
+
 
 def get_users_list():
     conn = sqlite3.connect('./baking_info.db')
