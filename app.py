@@ -1,8 +1,29 @@
 from flask import Flask, render_template, request, url_for, flash, redirect
 import sqlite3
+from cryptography.fernet import Fernet
+import os
+import pandas as pd
+
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
+
+
+from cryptography.fernet import Fernet
+
+# Generate a new key and save it to a file
+key = Fernet.generate_key()
+with open("key.key", "wb") as key_file:
+    key_file.write(key)
+
+print("Key saved to key.key file.")
+
+# Load the saved key
+with open("key.key", "rb") as key_file:
+    key = key_file.read()
+
+cipher = Fernet(key)
+
 
 def init_db():
     conn = sqlite3.connect('./baking_info.db')
@@ -41,6 +62,11 @@ def add_baker():
         print("name, age, phone, sec, password")
         print(f"{name}, {age}, {phone_number}, {security_level}, {password}")
 
+        #encrypt the name and password and phone number 
+        nm = str(cipher.encrypt(name.encode()).decode('utf-8'))
+        pwd = str(cipher.encrypt(password.encode()).decode('utf-8'))
+        phn_num = str(cipher.encrypt(phone_number.encode()).decode('utf-8'))
+
 
         errors = False
         if not name:
@@ -71,7 +97,7 @@ def add_baker():
         curr.execute('''
             INSERT INTO Baking_info (Name, Age, Phone_Number, Security_Level, Login_Password)
             VALUES (?, ?, ?, ?, ?)
-        ''', (name, int(age), phone_number, int(security_level), password)) 
+        ''', (nm, int(age), phn_num, int(security_level), pwd)) 
         conn.commit()
         conn.close()
         flash("Record Successfully added")
@@ -135,7 +161,18 @@ def get_users_list():
     cursor = conn.cursor()
     
     cursor.execute("SELECT Name, Age, Phone_Number, Security_Level, Login_Password FROM Baking_Info")
-    users = cursor.fetchall()
+
+    rows = cursor.fetchall()
+
+    df = pd.DataFrame(rows, columns=["Name", "Age", "Phone_Number", "Security_Level", "Login_Password"])
+    
+    # Decrypt fields
+    df["Name"] = df["Name"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+    df["Phone_Number"] = df["Phone_Number"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+    df["Login_Password"] = df["Login_Password"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+
+    users = df.to_dict(orient="records")
+    
     conn.close()
     return users
 
@@ -184,7 +221,7 @@ def get_results():
 def list():
     users = get_users_list()
     print(users)
-    print("HELLOLOKOKOFODFODOFDOFODO")
+    print("HELLOLOKOKOFOusersODOFDOFODO")
     return render_template('list.html', users=users)
 
 @app.route('/results')
