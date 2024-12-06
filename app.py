@@ -8,22 +8,16 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
-
 from cryptography.fernet import Fernet
 
-# Generate a new key and save it to a file
-key = Fernet.generate_key()
-with open("key.key", "wb") as key_file:
-    key_file.write(key)
-
-print("Key saved to key.key file.")
-
-# Load the saved key
-with open("key.key", "rb") as key_file:
-    key = key_file.read()
-
+if not os.path.exists("key.key"):
+    key = Fernet.generate_key()
+    with open("key.key", "wb") as key_file:
+        key_file.write(key)
+else:
+    with open("key.key", "rb") as key_file:
+        key = key_file.read()
 cipher = Fernet(key)
-
 
 def init_db():
     conn = sqlite3.connect('./baking_info.db')
@@ -33,6 +27,7 @@ def init_db():
 #Create the Baking_Info table
     curr.execute('''
     CREATE TABLE IF NOT EXISTS Baking_Info(
+        UserId INTEGER PRIMARY KEY AUTOINCREMENT,
         Name TEXT NOT NULL,
         Age INTEGER NOT NULL,
         Phone_Number TEXT NOT NULL,
@@ -43,8 +38,18 @@ def init_db():
     )
     ''')
     conn.commit()  # Commit changes
-    curr.execute('''INSERT INTO Baking_info(Name, Age, Phone_Number, Security_Level, Login_Password)
-                 VALUES(?,?,?,?,?)''', ('Admin', 21, 1234567890, 3, 12345)
+    name = 'Admin'
+    age = 21
+    Phone_Number = '1234567890'
+    Security_Level = 1
+    Login_Password = '12345'
+    print("ADMIN KEY BELOW")
+    print(cipher)
+    nm = str(cipher.encrypt(name.encode()).decode('utf-8'))
+    lp = str(cipher.encrypt(Login_Password.encode()).decode('utf-8'))
+    pn = str(cipher.encrypt(Phone_Number.encode()).decode('utf-8'))
+    curr.execute('''INSERT INTO Baking_Info(Name, Age, Phone_Number, Security_Level, Login_Password)
+                 VALUES(?,?,?,?,?)''', (nm,age,pn,Security_Level,lp)
                  )
     conn.commit()
     conn.close()
@@ -54,13 +59,53 @@ def init_db():
 def home():
     return render_template('home.html')
 
-@app.route('/login')
+@app.route('/login', methods=['GET','POST'])
 def login():
+    print(cipher)
     if request.method == 'POST':
         # Retrieve form data
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
-    return render_template('/login.html')
+        print("Username:", username)
+        print("Password:", password)
+        try:
+            print("IN HERE")
+
+            conn = sqlite3.connect('./baking_info.db')
+            conn.row_factory = sqlite3.Row
+            curr = conn.cursor()
+
+            curr.execute("SELECT Name, Age, Phone_Number, Security_Level, Login_Password FROM Baking_Info")
+            rows = curr.fetchall()
+
+            df = pd.DataFrame(rows, columns=["Name", "Age", "Phone_Number", "Security_Level", "Login_Password"])
+            df["Name"] = df["Name"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+            df["Phone_Number"] = df["Phone_Number"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+            df["Login_Password"] = df["Login_Password"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+            securitylevel = 0
+            print("AH HELL NAH WE AINT")
+            filtered_row = df[(df['Name'] == username) & (df['Login_Password'] == password)]
+
+            if not filtered_row.empty:
+                securitylevel = filtered_row.iloc[0]['Security_Level']
+                print("Login Successful!")
+                print("Security Level:", securitylevel)
+            print("In order fields")
+            #print()
+            if securitylevel == 1:
+                return render_template('homepagelvl1.html')
+            elif securitylevel == 2 or securitylevel == 3: 
+                return render_template('list.html')
+            else:
+                return render_template('login.html')
+    
+        except Exception as e:
+            print("Error:", e)
+            flash("Incorrect Username or Password")
+            return render_template('login.html')
+        finally:
+            conn.close()
+    return render_template('login.html')
 
 @app.route('/add_baker', methods=['GET', 'POST'])
 def add_baker():
@@ -79,7 +124,12 @@ def add_baker():
         pwd = str(cipher.encrypt(password.encode()).decode('utf-8'))
         phn_num = str(cipher.encrypt(phone_number.encode()).decode('utf-8'))
 
+        print(f"Encrpyted things : -   {nm, pwd, phn_num}")
 
+        decrypted_name = cipher.decrypt(nm.encode('utf-8')).decode('utf-8')
+        decrypted_password = cipher.decrypt(pwd.encode('utf-8')).decode('utf-8')
+        decrypted_phone_number = cipher.decrypt(phn_num.encode('utf-8')).decode('utf-8')
+        print(f"Decrypted shit: {decrypted_name, decrypted_password, decrypted_phone_number}")
         errors = False
         if not name:
             flash("You cannot enter an empty name.")
@@ -258,7 +308,8 @@ def show_results():
 
 
 if __name__ == '__main__':
-    init_db()
-    init_resultDB()
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        init_db()
+        init_resultDB()
     app.run(debug=True)
 
