@@ -48,8 +48,6 @@ def init_db():
     Security_Level2 = 2
     Security_Level1 = 1
     Login_Password = '12345'
-    print("ADMIN KEY BELOW")
-    print(cipher)
     nm3 = str(cipher.encrypt(name3.encode()).decode('utf-8'))
     nm2 = str(cipher.encrypt(name2.encode()).decode('utf-8'))
     nm1 = str(cipher.encrypt(name1.encode()).decode('utf-8'))
@@ -76,15 +74,11 @@ def home():
 
 @app.route('/login', methods=['GET','POST'])
 def login():
-    print(cipher)
     if request.method == 'POST':
         # Retrieve form data
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
-        print("Username:", username)
-        print("Password:", password)
         try:
-            print("IN HERE")
 
             conn = sqlite3.connect('./baking_info.db')
             conn.row_factory = sqlite3.Row
@@ -106,12 +100,8 @@ def login():
                 session['username'] = username
                 session['security_level'] = int(securitylevel)
                 session['user_id'] = int(userId)
-                print("Login Successful!")
-                print("Security Level:", securitylevel)
             else:
-                print("WE HEWRE?")
                 flash("Invalid Username or Password")
-            #print()
             if securitylevel == 1:
                 return render_template('homepagelvl1.html', username=username)
             elif securitylevel == 2: 
@@ -122,7 +112,6 @@ def login():
                 return render_template('login.html')
     
         except Exception as e:
-            print("Error:", e)
             flash("Incorrect Username or Password")
             return render_template('login.html')
         finally:
@@ -156,20 +145,16 @@ def add_baker():
         phone_number = request.form.get('PhoneNumber', '').strip()
         security_level = request.form.get('SecurityLevel', '').strip()
         password = request.form.get('Password', '').strip()
-        print("name, age, phone, sec, password")
-        print(f"{name}, {age}, {phone_number}, {security_level}, {password}")
 
         #encrypt the name and password and phone number 
         nm = str(cipher.encrypt(name.encode()).decode('utf-8'))
         pwd = str(cipher.encrypt(password.encode()).decode('utf-8'))
         phn_num = str(cipher.encrypt(phone_number.encode()).decode('utf-8'))
 
-        print(f"Encrpyted things : -   {nm, pwd, phn_num}")
 
         decrypted_name = cipher.decrypt(nm.encode('utf-8')).decode('utf-8')
         decrypted_password = cipher.decrypt(pwd.encode('utf-8')).decode('utf-8')
         decrypted_phone_number = cipher.decrypt(phn_num.encode('utf-8')).decode('utf-8')
-        print(f"Decrypted shit: {decrypted_name, decrypted_password, decrypted_phone_number}")
         errors = False
         if not name:
             flash("You cannot enter an empty name.")
@@ -220,9 +205,6 @@ def add_entry():
         e_votes = request.form.get('e_votes', '').strip()
         ok_votes = request.form.get('ok_votes', '').strip()
         b_votes = request.form.get('b_votes', '').strip()
-        print("entry, e_votes, ok_votes, b_votes")
-        print(f"{entry}, {e_votes}, {ok_votes}, {b_votes}")
-
 
         errors = False
         if not entry:
@@ -370,8 +352,6 @@ def get_my_results():
 @app.route('/tableview')
 def list():
     if session['security_level'] == False or session['security_level'] == 1:
-        print("ARE WE HERE?")
-        print(session['security_level'])
         return render_template('pagenotfound.html')
     users = get_users_list()
     return render_template('list.html', users=users)
@@ -389,7 +369,6 @@ def show_results():
     if session['security_level'] != 3:
         return render_template('pagenotfound.html')
     users = get_results()
-    print(users)
     return render_template('results.html', Entrys=users)
 
 def printscript():
