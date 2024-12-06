@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, flash, redirect
+from flask import Flask, render_template, request, url_for, flash, redirect, session
 import sqlite3
 from cryptography.fernet import Fernet
 import os
@@ -41,7 +41,7 @@ def init_db():
     name = 'Admin'
     age = 21
     Phone_Number = '1234567890'
-    Security_Level = 1
+    Security_Level = 3
     Login_Password = '12345'
     print("ADMIN KEY BELOW")
     print(cipher)
@@ -75,10 +75,10 @@ def login():
             conn.row_factory = sqlite3.Row
             curr = conn.cursor()
 
-            curr.execute("SELECT Name, Age, Phone_Number, Security_Level, Login_Password FROM Baking_Info")
+            curr.execute("SELECT UserId, Name, Age, Phone_Number, Security_Level, Login_Password FROM Baking_Info")
             rows = curr.fetchall()
 
-            df = pd.DataFrame(rows, columns=["Name", "Age", "Phone_Number", "Security_Level", "Login_Password"])
+            df = pd.DataFrame(rows, columns=["UserId", "Name", "Age", "Phone_Number", "Security_Level", "Login_Password"])
             df["Name"] = df["Name"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
             df["Phone_Number"] = df["Phone_Number"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
             df["Login_Password"] = df["Login_Password"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
@@ -88,14 +88,20 @@ def login():
 
             if not filtered_row.empty:
                 securitylevel = filtered_row.iloc[0]['Security_Level']
+                userId = filtered_row.iloc[0]['UserId']
+                session['username'] = username
+                session['security_level'] = int(securitylevel)
+                session['user_id'] = int(userId)
                 print("Login Successful!")
                 print("Security Level:", securitylevel)
             print("In order fields")
             #print()
             if securitylevel == 1:
-                return render_template('homepagelvl1.html')
-            elif securitylevel == 2 or securitylevel == 3: 
-                return render_template('list.html')
+                return render_template('homepagelvl1.html', username=username)
+            elif securitylevel == 2: 
+                return render_template('homepagelvl2.html', username=username)
+            elif securitylevel == 3:
+                return render_template('homepagelvl3.html', username=username)
             else:
                 return render_template('login.html')
     
@@ -106,6 +112,15 @@ def login():
         finally:
             conn.close()
     return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session['username'] = False
+    session['security_level'] = False
+    session['user_id'] = False
+
+    return home()
+
 
 @app.route('/add_baker', methods=['GET', 'POST'])
 def add_baker():
@@ -171,6 +186,8 @@ def add_baker():
 def add_entry():
     if request.method == 'POST':
         # Retrieve form data
+        user_id = session['user_id']
+        username = session['username']
         entry = request.form.get('Entry', '').strip()
         e_votes = request.form.get('e_votes', '').strip()
         ok_votes = request.form.get('ok_votes', '').strip()
@@ -203,9 +220,9 @@ def add_entry():
         conn = sqlite3.connect('./baking_result.db')
         curr = conn.cursor()
         curr.execute('''
-            INSERT INTO Baking_Results (Entry_Id, User_Id, Name, ExcellentV, OkV, BadV)
+            INSERT INTO Baking_Results (User_Id, Entry_Id, Name, ExcellentV, OkV, BadV)
             VALUES (?, ?, ?, ?, ?,?)
-        ''', (1, 2, entry, int(e_votes), int(ok_votes), int(b_votes))) 
+        ''', (user_id, 2, entry, int(e_votes), int(ok_votes), int(b_votes))) 
         conn.commit()
         conn.close()
         flash("Record Successfully added")
@@ -220,15 +237,25 @@ def success():
 
 @app.route('/homepagelvl1')
 def homepagelvl1():
-    return render_template('homepagelvl1.html')
+    return render_template('homepagelvl1.html',username=session['username'])
 
 @app.route('/homepagelvl2')
 def homepagelvl2():
-    return render_template('homepagelvl2.html')
+    return render_template('homepagelvl2.html',username=session['username'])
 
 @app.route('/homepagelvl3')
 def homepagelvl3():
-    return render_template('homepagelvl3.html')
+    return render_template('homepagelvl3.html',username=session['username'])
+
+@app.route('/go_home')
+def go_home():
+    if session['security_level'] == 1:
+        return homepagelvl1()
+    elif session['security_level'] == 2:
+        return homepagelvl2()
+    elif session['security_level'] == 3:
+        return homepagelvl3()
+
 
 
 def get_users_list():
@@ -259,8 +286,8 @@ def init_resultDB():
 
     curr.execute('''
         CREATE TABLE IF NOT EXISTS Baking_Results(
-            Entry_Id INTEGER NOT NULL,
             User_Id INTEGER NOT NULL,
+            Entry_Id INTEGER NOT NULL,
             Name TEXT NOT NULL,
             ExcellentV INTEGER NOT NULL,
             OkV INTEGER NOT NULL,
@@ -269,18 +296,7 @@ def init_resultDB():
                  ''')
     conn.commit()
 
-    curr.execute("SELECT COUNT(*) FROM Baking_Results")
-    if curr.fetchone()[0] == 0:  # If the table is empty
-        curr.executescript('''
-        INSERT INTO Baking_Results VALUES
-        (1, 1, 'Whoot Whoot Brownies', 1, 2, 4),
-        (2, 2, 'Cho Chip Cookies', 4, 1, 2),
-        (3, 3, 'Cho Cake', 2, 4, 1),
-        (4, 1, 'Sugar Cookies', 2, 2, 1);
-        ''')
-        conn.commit()
-    else:
-        conn.close()
+    conn.close()
     
 
 def get_results():
@@ -292,6 +308,18 @@ def get_results():
     users = cursor.fetchall()
     conn.close()
     return users
+
+def get_my_results():
+    conn = sqlite3.connect('./baking_result.db')
+    conn.row_factory = sqlite3.Row 
+    cursor = conn.cursor()
+    
+    cursor.execute('''SELECT User_Id, Entry_Id,  Name, ExcellentV, OKV, BadV FROM Baking_Results WHERE User_Id=?
+                    ''', (session['user_id'],))
+    users = cursor.fetchall()
+    conn.close()
+    return users
+    
     
 @app.route('/tableview')
 def list():
@@ -300,11 +328,19 @@ def list():
     print("HELLOLOKOKOFOusersODOFDOFODO")
     return render_template('list.html', users=users)
 
+@app.route('/my_results')
+def my_results():
+    results = get_my_results()
+    return render_template('results.html', Entrys=results)
+
+
 @app.route('/results')
 def show_results():
     users = get_results()
     print(users)
     return render_template('results.html', Entrys=users)
+
+
 
 
 if __name__ == '__main__':
