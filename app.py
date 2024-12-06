@@ -392,6 +392,23 @@ def show_results():
     print(users)
     return render_template('results.html', Entrys=users)
 
+def printscript():
+    conn = sqlite3.connect('./baking_info.db')
+    conn.row_factory = sqlite3.Row
+    curr = conn.cursor()
+
+    curr.execute("SELECT UserId, Name, Age, Phone_Number, Security_Level, Login_Password FROM Baking_Info")
+    rows = curr.fetchall()
+
+    df = pd.DataFrame(rows, columns=["UserId", "Name", "Age", "Phone_Number", "Security_Level", "Login_Password"])
+    df["Name"] = df["Name"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+    df["Phone_Number"] = df["Phone_Number"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+    df["Login_Password"] = df["Login_Password"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
+    print(df)
+    print("Sign in using Admin1 Admin2 or Admin3 for the respective security levels to test")
+    conn.close()
+
+
 
 
 
@@ -399,6 +416,7 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         init_db()
         init_resultDB()
+        printscript()
 
     app.run(debug=True)
 
