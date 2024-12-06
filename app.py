@@ -23,7 +23,8 @@ def init_db():
     conn = sqlite3.connect('./baking_info.db')
     curr = conn.cursor()
 
-
+    curr.execute('''Drop table IF EXISTS Baking_Info''')
+    #curr.execute('''Select * from Baking_Info;''')
 #Create the Baking_Info table
     curr.execute('''
     CREATE TABLE IF NOT EXISTS Baking_Info(
@@ -38,18 +39,32 @@ def init_db():
     )
     ''')
     conn.commit()  # Commit changes
-    name = 'Admin'
+    name3 = 'Admin3'
+    name2 = 'Admin2'
+    name1 = 'Admin1'
     age = 21
     Phone_Number = '1234567890'
-    Security_Level = 3
+    Security_Level3 = 3
+    Security_Level2 = 2
+    Security_Level1 = 1
     Login_Password = '12345'
     print("ADMIN KEY BELOW")
     print(cipher)
-    nm = str(cipher.encrypt(name.encode()).decode('utf-8'))
+    nm3 = str(cipher.encrypt(name3.encode()).decode('utf-8'))
+    nm2 = str(cipher.encrypt(name2.encode()).decode('utf-8'))
+    nm1 = str(cipher.encrypt(name1.encode()).decode('utf-8'))
     lp = str(cipher.encrypt(Login_Password.encode()).decode('utf-8'))
     pn = str(cipher.encrypt(Phone_Number.encode()).decode('utf-8'))
     curr.execute('''INSERT INTO Baking_Info(Name, Age, Phone_Number, Security_Level, Login_Password)
-                 VALUES(?,?,?,?,?)''', (nm,age,pn,Security_Level,lp)
+                 VALUES(?,?,?,?,?)''', (nm3,age,pn,Security_Level3,lp)
+                 )
+    conn.commit()
+    curr.execute('''INSERT INTO Baking_Info(Name, Age, Phone_Number, Security_Level, Login_Password)
+                 VALUES(?,?,?,?,?)''', (nm2,age,pn,Security_Level2,lp)
+                 )
+    conn.commit()
+    curr.execute('''INSERT INTO Baking_Info(Name, Age, Phone_Number, Security_Level, Login_Password)
+                 VALUES(?,?,?,?,?)''', (nm1,age,pn,Security_Level1,lp)
                  )
     conn.commit()
     conn.close()
@@ -83,7 +98,6 @@ def login():
             df["Phone_Number"] = df["Phone_Number"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
             df["Login_Password"] = df["Login_Password"].apply(lambda x: cipher.decrypt(x.encode()).decode('utf-8'))
             securitylevel = 0
-            print("AH HELL NAH WE AINT")
             filtered_row = df[(df['Name'] == username) & (df['Login_Password'] == password)]
 
             if not filtered_row.empty:
@@ -94,7 +108,9 @@ def login():
                 session['user_id'] = int(userId)
                 print("Login Successful!")
                 print("Security Level:", securitylevel)
-            print("In order fields")
+            else:
+                print("WE HEWRE?")
+                flash("Invalid Username or Password")
             #print()
             if securitylevel == 1:
                 return render_template('homepagelvl1.html', username=username)
@@ -121,9 +137,18 @@ def logout():
 
     return home()
 
+@app.route('/pagenotfound')
+def pagenotfound():
+    session['username'] = False
+    session['security_level'] = False
+    session['user_id'] = False
+    return render_template('pagenotfound.html')
 
 @app.route('/add_baker', methods=['GET', 'POST'])
 def add_baker():
+    if session['security_level'] != 3:
+        logout()
+        return render_template('pagenotfound.html')
     if request.method == 'POST':
         # Retrieve form data
         name = request.form.get('Name', '').strip()
@@ -184,6 +209,9 @@ def add_baker():
 
 @app.route('/add_entry', methods=['GET', 'POST'])
 def add_entry():
+    if session['security_level'] == False:
+        logout()
+        return render_template('pagenotfound.html')
     if request.method == 'POST':
         # Retrieve form data
         user_id = session['user_id']
@@ -215,7 +243,7 @@ def add_entry():
         
 
         if errors:
-            return redirect(url_for('success'))
+            return redirect(url_for('successEntry'))
         
         conn = sqlite3.connect('./baking_result.db')
         curr = conn.cursor()
@@ -226,7 +254,7 @@ def add_entry():
         conn.commit()
         conn.close()
         flash("Record Successfully added")
-        return render_template('success.html')
+        return render_template('successEntry.html')
 
     return render_template('add_entry.html')
 
@@ -234,17 +262,28 @@ def add_entry():
 def success():
     return render_template('success.html')
 
+@app.route('/successEntry')
+def successEntry():
+    return render_template('successEntry')
+
+
 
 @app.route('/homepagelvl1')
 def homepagelvl1():
+    if session['security_level'] != 1:
+        return render_template('pagenotfound.html')
     return render_template('homepagelvl1.html',username=session['username'])
 
 @app.route('/homepagelvl2')
 def homepagelvl2():
+    if session['security_level'] != 2:
+        return render_template('pagenotfound.html')
     return render_template('homepagelvl2.html',username=session['username'])
 
 @app.route('/homepagelvl3')
 def homepagelvl3():
+    if session['security_level'] != 3:
+        return render_template('pagenotfound.html')
     return render_template('homepagelvl3.html',username=session['username'])
 
 @app.route('/go_home')
@@ -255,6 +294,8 @@ def go_home():
         return homepagelvl2()
     elif session['security_level'] == 3:
         return homepagelvl3()
+    else:
+        return render_template('home.html')
 
 
 
@@ -283,6 +324,11 @@ def get_users_list():
 def init_resultDB():
     conn = sqlite3.connect('./baking_result.db')
     curr = conn.cursor()
+
+    
+    curr.execute('''Drop table IF EXISTS Baking_Results''')
+    #curr.execute('''Select * from Baking_Results;''')
+    conn.commit()
 
     curr.execute('''
         CREATE TABLE IF NOT EXISTS Baking_Results(
@@ -323,19 +369,25 @@ def get_my_results():
     
 @app.route('/tableview')
 def list():
+    if session['security_level'] == False or session['security_level'] == 1:
+        print("ARE WE HERE?")
+        print(session['security_level'])
+        return render_template('pagenotfound.html')
     users = get_users_list()
-    print(users)
-    print("HELLOLOKOKOFOusersODOFDOFODO")
     return render_template('list.html', users=users)
 
 @app.route('/my_results')
 def my_results():
+    if session['security_level'] == False:
+        return render_template('pagenotfound.html')
     results = get_my_results()
-    return render_template('results.html', Entrys=results)
+    return render_template('my_results.html', Entrys=results)
 
 
 @app.route('/results')
 def show_results():
+    if session['security_level'] != 3:
+        return render_template('pagenotfound.html')
     users = get_results()
     print(users)
     return render_template('results.html', Entrys=users)
@@ -347,5 +399,6 @@ if __name__ == '__main__':
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         init_db()
         init_resultDB()
+
     app.run(debug=True)
 
