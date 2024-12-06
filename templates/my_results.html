@@ -28,13 +28,11 @@
 </head>
 <body>
 
-<h1>User List</h1>
+<h1></h1>
 
 <table>
     <thead>
         <tr>  <!-- Change these to correct values -->
-            <th>Entry Id</th>
-            <th>User Id</th>
             <th>Name</th>
             <th>Excellent Votes</th>
             <th>Ok Votes</th>
@@ -44,8 +42,6 @@
     <tbody>
         {% for entry in Entrys %} <!--Right here where we change to our local data-->
         <tr>
-            <td>{{ entry.Entry_Id }}</td>
-            <td>{{ entry.User_Id }}</td>
             <td>{{ entry.Name }}</td>
             <td>{{ entry.ExcellentV }}</td>
             <td>{{ entry.OkV }}</td>
@@ -56,7 +52,7 @@
 </table>
 <body>
     <ul>
-        <li><a href="/">Go Home</a></li>
+        <li><a href="/go_home">Go Home</a></li>
     </ul>
 </body>
 </body>
